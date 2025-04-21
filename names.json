@@ -1,0 +1,19 @@
+{
+    "jetbrains_ides": [
+        "IntelliJ IDEA",
+        "PyCharm",
+        "WebStorm",
+        "PhpStorm",
+        "RubyMine",
+        "GoLand",
+        "CLion",
+        "Rider",
+        "DataGrip",
+        "AppCode",
+        "RustRover",
+        "Aqua",
+        "Fleet",
+        "Datalore",
+        "Space"
+    ]
+} 
