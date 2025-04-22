@@ -9,8 +9,10 @@ use serde_json::Value;
 use sysinfo;
 use eframe::egui;
 
-struct MyApp {
+mod scanners;
+mod ide_utils;
 
+struct MyApp {
     search_text: String,
     found_ides: Vec<String>,
     selected_ide: String,
@@ -57,7 +59,7 @@ impl eframe::App for MyApp {
                 ui.horizontal_centered(|ui| {
                     ui.vertical(|ui| {
                         if ui.button("Scan Now").clicked() {
-                            self.found_ides = test();
+                            self.found_ides = scanners::process_scan::scan_processes();
                             if !self.found_ides.is_empty() && self.selected_ide.is_empty() {
                                 self.selected_ide = self.found_ides[0].clone();
                             }
