@@ -1,11 +1,5 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
-#![allow(rustdoc::missing_crate_level_docs)]
-
-use std::f32::consts::E;
-use std::ffi::OsStr;
-use std::fs;
-use serde_json::Value;
-// it's an example
+use std::collections::HashMap;
+use directories::UserDirs;
 use sysinfo;
 use eframe::egui;
 
@@ -13,27 +7,29 @@ mod scanners;
 mod ide_utils;
 
 struct MyApp {
-    search_text: String,
     found_ides: Vec<String>,
     selected_ide: String,
-    auto_scan: bool,
-    scan_interval: f32,
     backup_vmoptions: bool,
+    home_dir: String,
+    desktop_scan: bool,
+    ide_paths: HashMap<String, String>,
 }
 
 impl Default for MyApp {
     fn default() -> Self {
         Self {
+            desktop_scan: false,
             backup_vmoptions: false,
-            search_text: String::new(),
             found_ides: Vec::new(),
             selected_ide: String::new(),
-            auto_scan: false,
-            scan_interval: 5.0,
+            home_dir: match directories::UserDirs::new() {
+                Some(dirs) => dirs.home_dir().to_string_lossy().to_string(),
+                None => "".to_string(),
+            },
+            ide_paths: HashMap::new(),
         }
     }
 }
-
 impl eframe::App for MyApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -48,6 +44,9 @@ impl eframe::App for MyApp {
                                 self.selected_ide = ide.clone();
                             }
                         });
+                        if is_selected {
+                           println!("{}", &self.ide_paths[ide]);
+                        }
                     }
                 });
 
@@ -59,13 +58,21 @@ impl eframe::App for MyApp {
                 ui.horizontal_centered(|ui| {
                     ui.vertical(|ui| {
                         if ui.button("Scan Now").clicked() {
-                            self.found_ides = scanners::process_scan::scan_processes();
+                            if !self.desktop_scan {
+                                self.ide_paths = scanners::process_scan::scan_processes();
+                                self.found_ides = self.ide_paths.keys().cloned().collect();
+                            } else {
+                                self.ide_paths = scanners::desktop_scan::scan_desktop(format!("{}/.local/share/applications",self.home_dir.as_str()).as_str());
+                                self.found_ides = self.ide_paths.keys().cloned().collect();
+                            }
+                            
                             if !self.found_ides.is_empty() && self.selected_ide.is_empty() {
                                 self.selected_ide = self.found_ides[0].clone();
                             }
                         }
-                    
+                        ui.checkbox(&mut self.desktop_scan, "Scan Desktop");
                     });
+                    
                     
                     
                     
@@ -103,55 +110,3 @@ fn main() -> Result<(), eframe::Error> {
     )
 }
 
-fn load_jetbrains_ides() -> Vec<String> {
-    match fs::read_to_string("names.json") {
-        Ok(contents) => {
-            match serde_json::from_str::<Value>(&contents) {
-                Ok(json) => {
-                    json["jetbrains_ides"]
-                        .as_array()
-                        .unwrap()
-                        .iter()
-                        .filter_map(|v| v.as_str())
-                        .map(String::from)
-                        .collect()
-                }
-                Err(e) => {
-                    eprintln!("Error parsing JSON: {}", e);
-                    Vec::new()
-                }
-            }
-        }
-        Err(e) => {
-            eprintln!("Error reading file: {}", e);
-            Vec::new()
-        }
-    }
-}
-
-fn is_jetbrains_ide(name: &str, ides: &[String]) -> (bool,String) {
-    for ide in ides {
-        if ide.to_lowercase() == name.to_lowercase() {
-            return (true,ide.to_string())
-        }
-    }
-    return (false,String::new())
-}
-
-fn test() -> Vec<String> {
-    let system = sysinfo::System::new_all();
-    let ides = load_jetbrains_ides();
-    let mut found_jetbrains_ides: Vec<String> = Vec::new();
-    system.processes().iter().for_each(|(pid, process)| {
-        if let Some(name) = process.name().to_str() {
-            let ide = is_jetbrains_ide(name, &ides);
-            if ide.0 && !found_jetbrains_ides.contains(&ide.1) {
-                found_jetbrains_ides.push(ide.1);
-                println!("✓ {} is a JetBrains IDE", name);
-            } else {
-                println!("✗ {} is not a JetBrains IDE", name);
-            }
-        }
-    });
-    found_jetbrains_ides
-}

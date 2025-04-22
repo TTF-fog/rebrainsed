@@ -29,7 +29,7 @@ pub fn load_jetbrains_ides() -> Vec<String> {
 
 pub fn is_jetbrains_ide(name: &str, ides: &[String]) -> (bool,String) {
     for ide in ides {
-        if ide.to_lowercase() == name.to_lowercase() {
+        if name.to_lowercase().contains(&ide.to_lowercase()) {
             return (true,ide.to_string())
         }
     }
