@@ -1,10 +1,10 @@
 use walkdir::WalkDir;
-use std::fs;
+use std::{fs, path::PathBuf};
 use std::collections::HashMap;
 use crate::ide_utils::{self, is_jetbrains_ide};
 
-pub fn scan_desktop(dir: &str) -> HashMap<String, String> {
-    let mut ides = HashMap::new();
+pub fn scan_desktop(dir: &str) -> HashMap<String, PathBuf> {
+    let mut ides:HashMap<String, PathBuf> = HashMap::new();
     let ide_list = ide_utils::load_jetbrains_ides();
     
     for entry in WalkDir::new(dir).into_iter().filter_map(|e| e.ok()) {
@@ -17,7 +17,7 @@ pub fn scan_desktop(dir: &str) -> HashMap<String, String> {
                     if let Some(exec) = contents.lines()
                         .find(|line| line.starts_with("Exec="))
                         .map(|line| line.trim_start_matches("Exec=").to_string()) {
-                        ides.insert(data.1, exec);
+                        ides.insert(data.1, PathBuf::from(exec));
                     }
                 }
             }

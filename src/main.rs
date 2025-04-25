@@ -1,10 +1,12 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 use directories::UserDirs;
 use sysinfo;
 use eframe::egui;
+use walkdir::WalkDir;
 
 mod scanners;
 mod ide_utils;
+mod patch_ide;
 
 struct MyApp {
     found_ides: Vec<String>,
@@ -12,7 +14,7 @@ struct MyApp {
     backup_vmoptions: bool,
     home_dir: String,
     desktop_scan: bool,
-    ide_paths: HashMap<String, String>,
+    ide_paths: HashMap<String, PathBuf>,
 }
 
 impl Default for MyApp {
@@ -21,7 +23,7 @@ impl Default for MyApp {
             desktop_scan: false,
             backup_vmoptions: false,
             found_ides: Vec::new(),
-            selected_ide: String::new(),
+            selected_ide: String::new(),                        
             home_dir: match directories::UserDirs::new() {
                 Some(dirs) => dirs.home_dir().to_string_lossy().to_string(),
                 None => "".to_string(),
@@ -44,9 +46,7 @@ impl eframe::App for MyApp {
                                 self.selected_ide = ide.clone();
                             }
                         });
-                        if is_selected {
-                           println!("{}", &self.ide_paths[ide]);
-                        }
+
                     }
                 });
 
@@ -54,7 +54,13 @@ impl eframe::App for MyApp {
                 ui.separator();
                 ui.add_space(ui.available_height() - 100.0);
                 ui.heading("Tools");
-                
+                if ui.button("Patch Selected IDE").clicked() {
+                    let ide_path = patch_ide::get_ide_root_path(
+                        &self.ide_paths[&self.selected_ide],
+                        &self.selected_ide
+                    );
+                    println!("{}", ide_path.display());
+                }
                 ui.horizontal_centered(|ui| {
                     ui.vertical(|ui| {
                         if ui.button("Scan Now").clicked() {
@@ -80,11 +86,9 @@ impl eframe::App for MyApp {
                         
                         if !self.selected_ide.is_empty() {
                             ui.heading("IDE Controls");
-                            if ui.button("Patch Selected IDE").clicked() {
-                                println!("Launching {}", self.selected_ide);
-                            }
+                           
                             if ui.checkbox(&mut self.backup_vmoptions, "Backup VM Options").clicked() {
-                                println!("Showing info for {}", self.selected_ide);
+                               
                             }
                         }
                     });
